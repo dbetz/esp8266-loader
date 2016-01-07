@@ -109,7 +109,7 @@ int FastPropellerLoader::loadBegin(int imageSize, int initialBaudRate, int final
     PropellerLoader slowLoader(m_connection);
 
     /* compute the packet ID (number of packets to be sent) */
-    m_packetID = (imageSize + maxDataSize() - 1) / maxDataSize();
+    m_packetID = (imageSize + MAX_PACKET_SIZE - 1) / MAX_PACKET_SIZE;
 
     /* generate a loader packet */
     if (generateInitialLoaderImage(loaderImage, m_packetID, initialBaudRate, finalBaudRate) != 0) {
@@ -152,8 +152,8 @@ int FastPropellerLoader::loadData(uint8_t *data, int size)
     int remaining = size;
     while (remaining > 0) {
         int cnt, result;
-        if ((cnt = remaining) > maxDataSize())
-            cnt = maxDataSize();
+        if ((cnt = remaining) > MAX_PACKET_SIZE)
+            cnt = MAX_PACKET_SIZE;
         if (transmitPacket(m_packetID, p, cnt, &result) != 0) {
             AppendError("error: transmitPacket failed");
             return -1;

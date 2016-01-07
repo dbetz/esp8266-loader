@@ -6,6 +6,9 @@
 #include "propellerimage.h"
 #include "proploader.h"
 
+// size of data buffer in the second-stage loader
+#define MAX_PACKET_SIZE     1024
+
 class FastPropellerLoader
 {
 public:
@@ -18,7 +21,6 @@ public:
 private:
     int transmitPacket(int id, uint8_t *payload, int payloadSize, int *pResult, int timeout = 2000);
     int generateInitialLoaderImage(PropellerImage &image, int packetID, int initialBaudRate, int finalBaudRate);
-    int maxDataSize() { return m_connection.maxDataSize(); }
 
     static void setHostInitializedValue(uint8_t *bytes, int offset, int value);
     static int32_t getLong(const uint8_t *buf);

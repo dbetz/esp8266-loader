@@ -148,7 +148,6 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
 {
     ByteArray packet;
 
-    AppendError("info: imageSize %d", imageSize);
     /* generate a single packet containing the tx handshake and the image to load */
     if (generateLoaderPacket(packet, image, imageSize, loadType) != 0)
         return -1;
@@ -336,8 +335,10 @@ int PropellerConnection::receiveDataExactTimeout(uint8_t *buf, int len, int time
 
         /* read the next bit of data */
         Serial.setTimeout(timeout);
-        if ((cnt = (int)Serial.readBytes(buf, remaining)) <= 0)
+        if ((cnt = (int)Serial.readBytes(buf, remaining)) <= 0) {
+            AppendError("error: receiveDataExactTimeout timed out");
             return -1;
+        }
 
         /* update the buffer pointer */
         remaining -= cnt;
@@ -357,10 +358,8 @@ int PropellerConnection::receiveChecksumAck(int byteCount, int delay)
 
     do {
         Serial.write(calibrate, sizeof(calibrate));
-        if (receiveDataExactTimeout(buf, 1, CALIBRATE_PAUSE) == 1) {
-            AppendError("info: received ack %02x", buf[0]);
+        if (receiveDataExactTimeout(buf, 1, CALIBRATE_PAUSE) == 1)
             return buf[0] == 0xFE ? 0 : -1;
-        }
     } while (--retries > 0);
 
     AppendError("error: timeout waiting for checksum ack");
@@ -378,7 +377,7 @@ int PropellerConnection::setBaudRate(int baudRate)
 ///////////////
 
 ByteArray::ByteArray(int maxSize)
-  : m_data(NULL), m_size(0), m_maxSize(maxSize)
+  : m_size(0), m_maxSize(maxSize)
 {
     m_data = (uint8_t *)malloc(maxSize);
     if (!m_data) {

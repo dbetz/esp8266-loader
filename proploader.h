@@ -8,14 +8,14 @@
 
 #define PROPELLER_RESET_PIN 2
 
-#define MAX_PACKET_SIZE     8192
+#define DEF_BYTEARRAY_SIZE  8192
 
 // number of milliseconds between attempts to read the checksum ack
 #define CALIBRATE_PAUSE     10
 
 class ByteArray {
 public:
-    ByteArray(int maxSize = MAX_PACKET_SIZE);
+    ByteArray(int maxSize = DEF_BYTEARRAY_SIZE);
     ~ByteArray();
     void clear() { m_size = 0; }
     bool append(uint8_t *data, int size);
@@ -40,7 +40,6 @@ public:
     virtual int receiveDataExactTimeout(uint8_t *buffer, int size, int timeout);
     virtual int receiveChecksumAck(int byteCount, int delay);
     virtual int setBaudRate(int baudRate);
-    virtual int maxDataSize() { return MAX_PACKET_SIZE; }
 private:
     int m_baudRate;
 };

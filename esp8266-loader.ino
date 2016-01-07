@@ -16,7 +16,11 @@ PropellerConnection connection;
 PropellerLoader loader(connection);
 FastPropellerLoader fastLoader(connection);
 
-uint8_t image[4096]; // don't want big arrays on the stack
+// spin .binary image buffer also used as a general purpose buffer
+// this must be >= MAX_PACKET_SIZE defined in fastproploader.h
+#define MAX_IMAGE_SIZE  4096
+
+uint8_t image[MAX_IMAGE_SIZE]; // don't want big arrays on the stack
 
 enum TransactionType {
   ttUnknown,
@@ -112,7 +116,7 @@ void loop()
       {
         int cnt;
         while (client.available()) {
-          if ((cnt = client.read(image, sizeof(image))) > 0)
+          if ((cnt = client.read(image, MAX_PACKET_SIZE)) > 0)
             connection.sendData(image, cnt);
         }
         if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
@@ -154,6 +158,7 @@ void loop()
           if ((cnt = client.read(image, sizeof(image))) > 0)
             if (fastLoader.loadData(image, cnt) != 0) {
               SendErrorResponse(client, 403, "loadData failed");
+              cnt = -1;
               break;
             }
         }
