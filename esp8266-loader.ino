@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdarg.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include "proploader.h"
@@ -26,7 +28,9 @@ enum TransactionType {
 };
 
 const char *FindArg(String &req, const char *key);
-void sendTextResponse(WiFiClient &client, const char *result);
+void InitErrorResponse();
+void SendErrorResponse(WiFiClient &client, int code, const char *fmt, ...);
+void SendTextResponse(WiFiClient &client, const char *result);
 void connectWiFi();
 void setupMDNS();
 
@@ -42,37 +46,30 @@ void loop()
 {
   // Check if a client has connected
   WiFiClient client = server.available();
-  if (!client) {
+  if (!client)
     return;
-  }
 
   // Read the first line of the request
   String req = client.readStringUntil('\r');
   if (client.peek() == '\n')
     client.read();
-  //Serial.println(req);
  
   // read the rest of the header
   while (client.available() > 0) {
     String hdr = client.readStringUntil('\r');
-    //Serial.println(hdr);
     if (client.peek() == '\n')
       client.read();
     if (hdr.length() == 0)
       break;
   }
 
-  //Serial.print("Body is ");
-  //Serial.print(client.available());
-  //Serial.println(" bytes");
-
   bool handled = false;
   const char *result = NULL;
+  InitErrorResponse();
   
   if (req.indexOf("POST") == 0) {
     TransactionType transactionType = ttUnknown;
     LoadType loadType;
-    int imageSize, i;
 
     if (req.indexOf("/program-and-run") != -1) {
       transactionType = ttLoad;
@@ -86,45 +83,48 @@ void loop()
       transactionType = ttLoad;
       loadType = ltDownloadAndRun;
     }
-    else if (req.indexOf("/load-begin") != -1) {
+    else if (req.indexOf("/load-begin") != -1)
       transactionType = ttLoadBegin;
-    }
-    else if (req.indexOf("/load-data") != -1) {
+    else if (req.indexOf("/load-data") != -1)
       transactionType = ttLoadData;
-    }
-    else if (req.indexOf("/load-end") != -1) {
+    else if (req.indexOf("/load-end") != -1)
       transactionType = ttLoadEnd;
-    }
-    else if (req.indexOf("/packet") != -1) {
+    else if (req.indexOf("/packet") != -1)
       transactionType = ttPacket;
-    }
 
     switch (transactionType) {
+      
     case ttLoad:
-      imageSize = 0;
-      while (client.available() > 0 && imageSize < sizeof(image))
-        image[imageSize++] = client.read();
-      if (loader.load(image, imageSize, loadType) == 0)
-        result = "Success!\r\n";
-      else
-        result = "Load failed\r\n";
-      sendTextResponse(client, result);
-      handled = true;
+      {
+        int imageSize = 0;
+        while (client.available() > 0 && imageSize < sizeof(image))
+          image[imageSize++] = client.read();
+        if (loader.load(image, imageSize, loadType) == 0)
+          result = "Success!\r\n";
+        else
+          result = "Load failed\r\n";
+        SendTextResponse(client, result);
+        handled = true;
+      }
       break;
+      
     case ttPacket: // write binary data to serial port and receive an 8 byte response
-      int cnt;
-      while (client.available()) {
-        if ((cnt = client.read(image, sizeof(image))) > 0)
-          connection.sendData(image, cnt);
+      {
+        int cnt;
+        while (client.available()) {
+          if ((cnt = client.read(image, sizeof(image))) > 0)
+            connection.sendData(image, cnt);
+        }
+        if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
+          client.print("HTTP/1.1 200 OK\r\n");
+          client.write((char *)image, cnt);
+        }
+        else
+          client.print("HTTP/1.1 403 Timeout receiving response\r\n");
+        handled = true;
       }
-      if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
-        client.print("HTTP/1.1 200 OK\r\n");
-        client.write((char *)image, cnt);
-      }
-      else
-        client.print("HTTP/1.1 403 Timeout receiving response\r\n");
-      handled = true;
       break;
+      
     case ttLoadBegin:
       {
         int initialBaudRate = INITIAL_BAUD_RATE;
@@ -138,29 +138,31 @@ void loop()
         if ((arg = FindArg(req, "final-baud-rate=")) != NULL)
           finalBaudRate = atoi(arg);
         if (imageSize == -1)
-          client.print("HTTP/1.1 403 image size missing\r\n");
+          SendErrorResponse(client, 403, "image size missing");
         else if (fastLoader.loadBegin(imageSize, initialBaudRate, finalBaudRate) == 0)
-          client.print("HTTP/1.1 403 loadBegin failed\r\n");
-        else
           client.print("HTTP/1.1 200 OK\r\n");
+        else
+          SendErrorResponse(client, 403, "loadBegin failed");
         handled = true;
       }
       break;
+      
     case ttLoadData:
       {
-        int cnt;
+        int cnt = 0;
         while (client.available()) {
           if ((cnt = client.read(image, sizeof(image))) > 0)
-            if (fastLoader.loadImageData(image, cnt) != 0) {
-              client.print("HTTP/1.1 403 loadImageData failed\r\n");
+            if (fastLoader.loadData(image, cnt) != 0) {
+              SendErrorResponse(client, 403, "loadData failed");
               break;
             }
         }
-        if (!client.available())
+        if (cnt >= 0 && !client.available())
           client.print("HTTP/1.1 200 OK\r\n");
         handled = true;
       }
       break;
+      
     case ttLoadEnd:
       {
         LoadType loadType = ltDownloadAndRun;
@@ -173,9 +175,9 @@ void loop()
         if (fastLoader.loadEnd(loadType) == 0)
           client.print("HTTP/1.1 200 OK\r\n");
         else
-          client.print("HTTP/1.1 403 loadEnd failed\r\n");
+          SendErrorResponse(client, 403, "loadEnd failed");
+        handled = true;
       }
-      handled = true;
       break;
     }
   }
@@ -201,7 +203,44 @@ const char *FindArg(String &req, const char *key)
   return req.c_str() + i + strlen(key);
 }
 
-void sendTextResponse(WiFiClient &client, const char *result)
+String errorText;
+
+void InitErrorResponse()
+{
+  errorText.remove(0);
+}
+
+void AppendError(const char *fmt, ...)
+{
+  char buf[1024];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  errorText += "<p>";
+  errorText += buf;
+  errorText += "</p>\r\n";
+}
+
+void SendErrorResponse(WiFiClient &client, int code, const char *fmt, ...)
+{
+  char buf[1024];
+  va_list ap;
+  String s;
+  snprintf(buf, sizeof(buf), "HTTP/1.1 %d ", code);
+  s += buf;
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  s += buf;
+  s += "\r\nContent-Type: text/html\r\n\r\n";
+  s += "<!DOCTYPE HTML>\r\n<html>\r\n";
+  s += errorText;
+  s += "</html>\r\n";
+  client.print(s);
+}
+
+void SendTextResponse(WiFiClient &client, const char *result)
 {
   String s;
   s += "HTTP/1.1 200 OK\r\n";
@@ -214,7 +253,7 @@ void sendTextResponse(WiFiClient &client, const char *result)
 
 void connectWiFi()
 {
-  byte ledStatus = LOW;
+//  byte ledStatus = LOW;
   
   Serial.println();
   Serial.println("Connecting to: " + String(WiFiSSID));
@@ -232,8 +271,8 @@ void connectWiFi()
   while (WiFi.status() != WL_CONNECTED) {
     
     // Blink the LED
- //   digitalWrite(LED_PIN, ledStatus); // Write LED high/low
-    ledStatus = (ledStatus == HIGH) ? LOW : HIGH;
+//    digitalWrite(LED_PIN, ledStatus); // Write LED high/low
+//    ledStatus = (ledStatus == HIGH) ? LOW : HIGH;
 
     // Delays allow the ESP8266 to perform critical tasks
     // defined outside of the sketch. These tasks include
@@ -252,7 +291,7 @@ void connectWiFi()
 
 void setupMDNS()
 {
-  // Call MDNS.begin(<domain>) to set up mDNS to point to "<domain>.local"
+  // set up mDNS to point to "thing2.local"
   if (!MDNS.begin("thing2")) {
     Serial.println("Error setting up MDNS responder!");
     while (1)

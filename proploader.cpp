@@ -1,24 +1,6 @@
 #include "Arduino.h"
 #include "proploader.h"
 
-//#define DEBUG
-//#define DUMMY
-
-#ifdef DEBUG
-#define INFO(msg, args...) do { Serial.print(msg, ##args); } while (0)
-#else
-#define INFO(msg, args...)
-#endif
-#define ERROR(msg, args...) do { Serial.println("error: " msg, ##args); } while (0)
-
-#ifdef DUMMY
-#define DRETURN   return
-#define DRETURN0  return 0
-#else
-#define DRETURN
-#define DRETURN0
-#endif
-
 /////////////////////
 // PropellerLoader //
 /////////////////////
@@ -166,31 +148,34 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
 {
     ByteArray packet;
 
+    AppendError("info: imageSize %d", imageSize);
     /* generate a single packet containing the tx handshake and the image to load */
     if (generateLoaderPacket(packet, image, imageSize, loadType) != 0)
         return -1;
 
     /* reset the Propeller */
-    if (m_connection.generateResetSignal() != 0)
+    if (m_connection.generateResetSignal() != 0) {
+        AppendError("error: generateResetSignal failed");
         return -1;
+    }
 
     /* send the packet */
     if (m_connection.sendData(packet.data(), packet.size()) != 0) {
-        ERROR("sendData failed");
+        AppendError("error: sendData failed");
         return -1;
     }
 
     /* receive the handshake response and the hardware version */
     int cnt = sizeof(rxHandshake) + 4;
     if (m_connection.receiveDataExactTimeout(packet.data(), cnt, 2000) != cnt) {
-        ERROR("receiveDataExactTimeout failed");
+        AppendError("error: receiveDataExactTimeout failed");
         return -1;
     }
 
     /* verify the rx handshake */
     uint8_t *buf = packet.data();
     if (memcmp(buf, rxHandshake, sizeof(rxHandshake)) != 0) {
-        ERROR("handshake failed");
+        AppendError("error: handshake failed");
         return -1;
     }
 
@@ -199,13 +184,13 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
     for (int i = sizeof(rxHandshake); i < cnt; ++i)
         version = ((version >> 2) & 0x3F) | ((buf[i] & 0x01) << 6) | ((buf[i] & 0x20) << 2);
     if (version != 1) {
-        ERROR("wrong propeller version");
+        AppendError("error: wrong propeller version");
         return -1;
     }
 
     /* receive and verify the checksum */
     if (m_connection.receiveChecksumAck(packet.size(), 250) != 0) {
-        ERROR("checksum verification failed");
+        AppendError("error: checksum verification failed");
         return -1;
     }
 
@@ -214,13 +199,13 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
 
         /* wait for an ACK indicating a successful EEPROM programming */
         if (m_connection.receiveChecksumAck(0, 5000) != 0) {
-            ERROR("EEPROM programming failed");
+            AppendError("error: EEPROM programming failed");
             return -1;
         }
 
         /* wait for an ACK indicating a successful EEPROM verification */
         if (m_connection.receiveChecksumAck(0, 2000) != 0) {
-            ERROR("EEPROM verification failed");
+            AppendError("error: EEPROM verification failed");
             return -1;
         }
     }
@@ -370,18 +355,21 @@ int PropellerConnection::receiveChecksumAck(int byteCount, int delay)
     int retries = (msSendTime / CALIBRATE_PAUSE) | (delay / CALIBRATE_PAUSE) + 20;
     uint8_t buf[1];
 
-    Serial.print("XXX");
     do {
         Serial.write(calibrate, sizeof(calibrate));
-        if (receiveDataExactTimeout(buf, 1, CALIBRATE_PAUSE) == 1)
+        if (receiveDataExactTimeout(buf, 1, CALIBRATE_PAUSE) == 1) {
+            AppendError("info: received ack %02x", buf[0]);
             return buf[0] == 0xFE ? 0 : -1;
+        }
     } while (--retries > 0);
 
+    AppendError("error: timeout waiting for checksum ack");
     return -1;
 }
 
 int PropellerConnection::setBaudRate(int baudRate)
 {
+    Serial.begin(baudRate);
     return 0;
 }
 

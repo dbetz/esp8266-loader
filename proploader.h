@@ -8,7 +8,7 @@
 
 #define PROPELLER_RESET_PIN 2
 
-#define MAX_PACKET_SIZE     1024
+#define MAX_PACKET_SIZE     8192
 
 // number of milliseconds between attempts to read the checksum ack
 #define CALIBRATE_PAUSE     10
@@ -66,5 +66,7 @@ private:
 
     PropellerConnection &m_connection;
 };
+
+void AppendError(const char *fmt, ...);
 
 #endif

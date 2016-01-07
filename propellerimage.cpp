@@ -1,6 +1,7 @@
 #include "propellerimage.h"
 
 PropellerImage::PropellerImage()
+  : m_imageData(0), m_imageSize(0)
 {
 }
 

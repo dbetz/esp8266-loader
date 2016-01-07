@@ -112,24 +112,29 @@ int FastPropellerLoader::loadBegin(int imageSize, int initialBaudRate, int final
     m_packetID = (imageSize + maxDataSize() - 1) / maxDataSize();
 
     /* generate a loader packet */
-    if (generateInitialLoaderImage(loaderImage, m_packetID, initialBaudRate, finalBaudRate) != 0)
+    if (generateInitialLoaderImage(loaderImage, m_packetID, initialBaudRate, finalBaudRate) != 0) {
+        AppendError("error: generateInitialLoaderImage failed");
         return -1;
-
+    }
+ 
     /* load the second-stage loader using the propeller ROM protocol */
-    if (slowLoader.load(loaderImage.imageData(), loaderImage.imageSize(), ltDownloadAndRun) != 0)
+    if (slowLoader.load(loaderImage.imageData(), loaderImage.imageSize(), ltDownloadAndRun) != 0) {
+        AppendError("error: failed to load second-stage loader");
         return -1;
+    }
 
     /* wait for the second-stage loader to start */
     cnt = m_connection.receiveDataExactTimeout(response, sizeof(response), 2000);
+    AppendError("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
     result = getLong(&response[0]);
     if (cnt != 8 || result != m_packetID) {
-        printf("error: second-stage loader failed to start - cnt %d, packetID %d, result %d\n", cnt, m_packetID, result);
+        AppendError("error: second-stage loader failed to start - cnt %d, packetID %d, result %d", cnt, m_packetID, result);
         return -1;
     }
 
     /* switch to the final baud rate */
     if (m_connection.setBaudRate(finalBaudRate) != 0) {
-        printf("error: setting final baud rate failed\n");
+        AppendError("error: setting final baud rate failed");
         return -1;
     }
 
@@ -140,32 +145,30 @@ int FastPropellerLoader::loadBegin(int imageSize, int initialBaudRate, int final
     return 0;
 }
 
-int FastPropellerLoader::loadImageData(uint8_t *data, int size)
+int FastPropellerLoader::loadData(uint8_t *data, int size)
 {
-    int result, i;
-    
     /* transmit the image */
     uint8_t *p = data;
     int remaining = size;
     while (remaining > 0) {
-        int size;
-        if ((size = remaining) > maxDataSize())
-            size = maxDataSize();
-        if (transmitPacket(m_packetID, p, size, &result) != 0) {
-            printf("error: transmitPacket failed\n");
+        int cnt, result;
+        if ((cnt = remaining) > maxDataSize())
+            cnt = maxDataSize();
+        if (transmitPacket(m_packetID, p, cnt, &result) != 0) {
+            AppendError("error: transmitPacket failed");
             return -1;
         }
         if (result != m_packetID - 1) {
-            printf("error: unexpected result: expected %d, received %d\n", m_packetID - 1, result);
+            AppendError("error: unexpected result: expected %d, received %d", m_packetID - 1, result);
             return -1;
         }
-        remaining -= size;
-        p += size;
+        remaining -= cnt;
+        p += cnt;
         --m_packetID;
     }
 
     /* update the checksum */
-    for (i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
         m_checksum += data[i];
 
     /* return successfully */
@@ -182,11 +185,11 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
 
     /* transmit the RAM verify packet and verify the checksum */
     if (transmitPacket(m_packetID, verifyRAM, sizeof(verifyRAM), &result) != 0) {
-        printf("error: transmitPacket failed\n");
+        AppendError("error: transmitPacket failed");
         return -1;
     }
     if (result != -m_checksum) {
-        printf("error: bad checksum\n");
+        AppendError("error: bad checksum");
         return -1;
     }
     m_packetID = -m_checksum;
@@ -194,11 +197,11 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
     /* program the eeprom if requested */
     if (loadType & ltDownloadAndProgram) {
         if (transmitPacket(m_packetID, programVerifyEEPROM, sizeof(programVerifyEEPROM), &result, 8000) != 0) {
-            printf("error: transmitPacket failed\n");
+            AppendError("error: transmitPacket failed");
             return -1;
         }
         if (result != -m_checksum*2) {
-            printf("error: bad checksum\n");
+            AppendError("error: bad checksum");
             return -1;
         }
         m_packetID = -m_checksum*2;
@@ -206,18 +209,18 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
 
     /* transmit the readyToLaunch packet */
     if (transmitPacket(m_packetID, readyToLaunch, sizeof(readyToLaunch), &result) != 0) {
-        printf("error: transmitPacket failed\n");
+        AppendError("error: transmitPacket failed");
         return -1;
     }
     if (result != m_packetID - 1) {
-        printf("error: readyToLaunch failed\n");
+        AppendError("error: readyToLaunch failed");
         return -1;
     }
     --m_packetID;
 
     /* transmit the launchNow packet which actually starts the downloaded program */
     if (transmitPacket(0, launchNow, sizeof(launchNow), NULL) != 0) {
-        printf("error: transmitPacket failed\n");
+        AppendError("error: transmitPacket failedp");
         return -1;
     }
 
@@ -242,17 +245,21 @@ int FastPropellerLoader::transmitPacket(int id, uint8_t *payload, int payloadSiz
         tag = (int32_t)rand();
         setLong(&hdr[4], tag);
         if (m_connection.sendData(hdr, sizeof(hdr)) != sizeof(hdr)
-        ||  m_connection.sendData(payload, payloadSize) != payloadSize)
+        ||  m_connection.sendData(payload, payloadSize) != payloadSize) {
+            AppendError("error: sendData failed");
             return -1;
-
+        }
+        
         /* receive the response */
         if (pResult) {
             cnt = m_connection.receiveDataExactTimeout(response, sizeof(response), timeout);
+            AppendError("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
             result = getLong(&response[0]);
             if (cnt == 8 && getLong(&response[4]) == tag && result != id) {
                 *pResult = result;
                 return 0;
             }
+            AppendError("error: transmitPacket failed - cnt %d, tag %d, result %d, id %d", cnt, tag, result, id);
         }
 
         /* don't wait for a result */
@@ -270,11 +277,10 @@ int FastPropellerLoader::generateInitialLoaderImage(PropellerImage &image, int p
 {
     int initAreaOffset = sizeof(rawLoaderImage) + RAW_LOADER_INIT_OFFSET_FROM_END;
     uint8_t *imagePtr;
-    int checksum, i;
-
+ 
     // Make an image from the loader template
     image.setImage(rawLoaderImage, sizeof(rawLoaderImage));
-    imagePtr = (uint8_t *)image.imageData();
+    imagePtr = image.imageData();
 
     // Clock mode
     //setHostInitializedValue(imagePtr, initAreaOffset +  0, 0);
@@ -311,13 +317,7 @@ int FastPropellerLoader::generateInitialLoaderImage(PropellerImage &image, int p
     setHostInitializedValue(imagePtr, initAreaOffset + 36, packetID);
 
     // Recalculate and update checksum so low byte of checksum calculates to 0.
-    checksum = 0;
-    imagePtr[5] = 0; // start with a zero checksum
-    for (i = 0; i < (int)sizeof(rawLoaderImage); ++i)
-        checksum += imagePtr[i];
-    for (i = 0; i < (int)sizeof(initCallFrame); ++i)
-        checksum += initCallFrame[i];
-    imagePtr[5] = 256 - (checksum & 0xFF);
+    image.updateChecksum();
 
     /* return successfully */
     return 0;

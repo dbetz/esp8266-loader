@@ -12,7 +12,7 @@ public:
     FastPropellerLoader(PropellerConnection &connection);
     ~FastPropellerLoader();
     int loadBegin(int imageSize, int initialBaudRate = INITIAL_BAUD_RATE, int finalBaudRate = FINAL_BAUD_RATE);
-    int loadImageData(uint8_t *data, int size);
+    int loadData(uint8_t *data, int size);
     int loadEnd(LoadType loadType);
 
 private:
