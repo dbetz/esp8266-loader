@@ -8,10 +8,10 @@
 //////////////////////
 // WiFi Definitions //
 //////////////////////
-// the file ../ap.h should contain the following two lines:
+// the file ap.h should contain the following two lines:
 //const char WiFiSSID[] = "my_ssid";
 //const char WiFiPSK[] = "my_password";
-#include "../ap.h"
+#include "ap.h"
 
 WiFiServer server(80);
 PropellerConnection connection;
