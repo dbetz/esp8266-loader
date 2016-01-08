@@ -25,19 +25,21 @@ public:
     PropellerImage(uint8_t *imageData, int imageSize);
     ~PropellerImage();
     void setImage(uint8_t *imageData, int imageSize);
-    void updateChecksum();
+    uint8_t updateChecksum();
     uint8_t *imageData() { return m_imageData; }
     int imageSize() { return m_imageSize; }
     uint32_t clkFreq();
     void setClkFreq(uint32_t clkFreq);
     uint8_t clkMode();
     void setClkMode(uint8_t clkMode);
+    uint8_t getByte(int offset);
+    void setByte(int offset, uint8_t value);
+    uint16_t getWord(int offset);
+    void setWord(int offset, uint16_t value);
+    uint32_t getLong(int offset);
+    void setLong(int offset, uint32_t value);
 
 private:
-    static uint16_t getWord(const uint8_t *buf);
-    static void setWord(uint8_t *buf, uint16_t value);
-    static uint32_t getLong(const uint8_t *buf);
-    static void setLong(uint8_t *buf, uint32_t value);
 
     uint8_t *m_imageData;
     int m_imageSize;

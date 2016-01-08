@@ -1,6 +1,23 @@
 #include "Arduino.h"
 #include "proploader.h"
 
+class ByteArray {
+public:
+    ByteArray(int maxSize = DEF_BYTEARRAY_SIZE);
+    ~ByteArray();
+    void clear() { m_size = 0; }
+    bool append(uint8_t *data, int size);
+    bool append(int data);
+    uint8_t *data() { return m_data; }
+    int maxSize() { return m_maxSize; }
+    int size() { return m_size; }
+    void setSize(int size) { m_size = size; }
+private:
+    uint8_t *m_data;
+    int m_maxSize;
+    int m_size;
+};
+
 /////////////////////
 // PropellerLoader //
 /////////////////////
@@ -159,7 +176,7 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
     }
 
     /* send the packet */
-    if (m_connection.sendData(packet.data(), packet.size()) != 0) {
+    if (m_connection.sendData(packet.data(), packet.size()) != packet.size()) {
         AppendError("error: sendData failed");
         return -1;
     }
@@ -294,82 +311,6 @@ void PropellerLoader::encodeBytes(ByteArray &packet, const uint8_t *inBytes, int
         /* advance to the next group of bits */
         nextBit += PDSTx[bits][bitsIn - 1].bitCount;
     }
-}
-
-/////////////////////////
-// PropellerConnection //
-/////////////////////////
-
-PropellerConnection::PropellerConnection()
-  : m_baudRate(INITIAL_BAUD_RATE)
-{
-    pinMode(PROPELLER_RESET_PIN, OUTPUT);
-    digitalWrite(PROPELLER_RESET_PIN, HIGH);
-}
-
-int PropellerConnection::generateResetSignal()
-{
-    Serial.flush();
-    delay(10);
-    digitalWrite(PROPELLER_RESET_PIN, LOW);
-    delay(10);
-    digitalWrite(PROPELLER_RESET_PIN, HIGH);
-    delay(100);
-    while (Serial.available())
-      Serial.read();
-    return 0;
-}
-
-int PropellerConnection::sendData(uint8_t *buf, int len)
-{
-    return Serial.write(buf, len) == len ? 0 : -1;
-}
-
-int PropellerConnection::receiveDataExactTimeout(uint8_t *buf, int len, int timeout)
-{
-    int remaining = len;
-
-    /* return only when the buffer contains the exact amount of data requested */
-    while (remaining > 0) {
-        int cnt;
-
-        /* read the next bit of data */
-        Serial.setTimeout(timeout);
-        if ((cnt = (int)Serial.readBytes(buf, remaining)) <= 0) {
-            AppendError("error: receiveDataExactTimeout timed out");
-            return -1;
-        }
-
-        /* update the buffer pointer */
-        remaining -= cnt;
-        buf += cnt;
-    }
-
-    /* return the full size of the buffer */
-    return len;
-}
-
-int PropellerConnection::receiveChecksumAck(int byteCount, int delay)
-{
-    static uint8_t calibrate[1] = { 0xF9 };
-    int msSendTime = (byteCount * 10 * 1000) / m_baudRate;
-    int retries = (msSendTime / CALIBRATE_PAUSE) | (delay / CALIBRATE_PAUSE) + 20;
-    uint8_t buf[1];
-
-    do {
-        Serial.write(calibrate, sizeof(calibrate));
-        if (receiveDataExactTimeout(buf, 1, CALIBRATE_PAUSE) == 1)
-            return buf[0] == 0xFE ? 0 : -1;
-    } while (--retries > 0);
-
-    AppendError("error: timeout waiting for checksum ack");
-    return -1;
-}
-
-int PropellerConnection::setBaudRate(int baudRate)
-{
-    Serial.begin(baudRate);
-    return 0;
 }
 
 ///////////////

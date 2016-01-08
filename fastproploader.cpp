@@ -276,57 +276,49 @@ double ClockSpeed = 80000000.0;
 int FastPropellerLoader::generateInitialLoaderImage(PropellerImage &image, int packetID, int initialBaudRate, int finalBaudRate)
 {
     int initAreaOffset = sizeof(rawLoaderImage) + RAW_LOADER_INIT_OFFSET_FROM_END;
-    uint8_t *imagePtr;
  
     // Make an image from the loader template
     image.setImage(rawLoaderImage, sizeof(rawLoaderImage));
-    imagePtr = image.imageData();
-
+ 
     // Clock mode
-    //setHostInitializedValue(imagePtr, initAreaOffset +  0, 0);
+    //image.setLong(initAreaOffset +  0, 0);
 
     // Initial Bit Time.
-    setHostInitializedValue(imagePtr, initAreaOffset +  4, (int)trunc(80000000.0 / initialBaudRate + 0.5));
+    image.setLong(initAreaOffset +  4, (int)trunc(80000000.0 / initialBaudRate + 0.5));
 
     // Final Bit Time.
-    setHostInitializedValue(imagePtr, initAreaOffset +  8, (int)trunc(80000000.0 / finalBaudRate + 0.5));
+    image.setLong(initAreaOffset +  8, (int)trunc(80000000.0 / finalBaudRate + 0.5));
 
     // 1.5x Final Bit Time minus maximum start bit sense error.
-    setHostInitializedValue(imagePtr, initAreaOffset + 12, (int)trunc(1.5 * ClockSpeed / finalBaudRate - MAX_RX_SENSE_ERROR + 0.5));
+    image.setLong(initAreaOffset + 12, (int)trunc(1.5 * ClockSpeed / finalBaudRate - MAX_RX_SENSE_ERROR + 0.5));
 
     // Failsafe Timeout (seconds-worth of Loader's Receive loop iterations).
-    setHostInitializedValue(imagePtr, initAreaOffset + 16, (int)trunc(2.0 * ClockSpeed / (3 * 4) + 0.5));
+    image.setLong(initAreaOffset + 16, (int)trunc(2.0 * ClockSpeed / (3 * 4) + 0.5));
 
     // EndOfPacket Timeout (2 bytes worth of Loader's Receive loop iterations).
-    setHostInitializedValue(imagePtr, initAreaOffset + 20, (int)trunc((2.0 * ClockSpeed / finalBaudRate) * (10.0 / 12.0) + 0.5));
+    image.setLong(initAreaOffset + 20, (int)trunc((2.0 * ClockSpeed / finalBaudRate) * (10.0 / 12.0) + 0.5));
 
     // PatchLoaderLongValue(RawSize*4+RawLoaderInitOffset + 24, Max(Round(ClockSpeed * SSSHTime), 14));
     // PatchLoaderLongValue(RawSize*4+RawLoaderInitOffset + 28, Max(Round(ClockSpeed * SCLHighTime), 14));
     // PatchLoaderLongValue(RawSize*4+RawLoaderInitOffset + 32, Max(Round(ClockSpeed * SCLLowTime), 26));
 
     // Minimum EEPROM Start/Stop Condition setup/hold time (400 KHz = 1/0.6 µS); Minimum 14 cycles
-    //setHostInitializedValue(imagePtr, initAreaOffset + 24, 14);
+    //image.setLong(initAreaOffset + 24, 14);
 
     // Minimum EEPROM SCL high time (400 KHz = 1/0.6 µS); Minimum 14 cycles
-    //setHostInitializedValue(imagePtr, initAreaOffset + 28, 14);
+    //image.setLong(initAreaOffset + 28, 14);
 
     // Minimum EEPROM SCL low time (400 KHz = 1/1.3 µS); Minimum 26 cycles
-    //setHostInitializedValue(imagePtr, initAreaOffset + 32, 26);
+    //image.setLong(initAreaOffset + 32, 26);
 
     // First Expected Packet ID; total packet count.
-    setHostInitializedValue(imagePtr, initAreaOffset + 36, packetID);
+    image.setLong(initAreaOffset + 36, packetID);
 
     // Recalculate and update checksum so low byte of checksum calculates to 0.
     image.updateChecksum();
 
     /* return successfully */
     return 0;
-}
-
-void FastPropellerLoader::setHostInitializedValue(uint8_t *bytes, int offset, int value)
-{
-    for (int i = 0; i < 4; ++i)
-        bytes[offset + i] = (value >> (i * 8)) & 0xFF;
 }
 
 int32_t FastPropellerLoader::getLong(const uint8_t *buf)

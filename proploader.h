@@ -2,47 +2,14 @@
 #define __PROPLOADER_H__
 
 #include <stdint.h>
+#include "propconnection.h"
 
 #define INITIAL_BAUD_RATE   115200
 #define FINAL_BAUD_RATE     921600
 
-#define PROPELLER_RESET_PIN 2
-
 #define DEF_BYTEARRAY_SIZE  8192
 
-// number of milliseconds between attempts to read the checksum ack
-#define CALIBRATE_PAUSE     10
-
-class ByteArray {
-public:
-    ByteArray(int maxSize = DEF_BYTEARRAY_SIZE);
-    ~ByteArray();
-    void clear() { m_size = 0; }
-    bool append(uint8_t *data, int size);
-    bool append(int data);
-    uint8_t *data() { return m_data; }
-    int maxSize() { return m_maxSize; }
-    int size() { return m_size; }
-    void setSize(int size) { m_size = size; }
-private:
-    uint8_t *m_data;
-    int m_maxSize;
-    int m_size;
-};
-
-class PropellerConnection
-{
-public:
-    PropellerConnection();
-    ~PropellerConnection() {}
-    virtual int generateResetSignal();
-    virtual int sendData(uint8_t *buffer, int size);
-    virtual int receiveDataExactTimeout(uint8_t *buffer, int size, int timeout);
-    virtual int receiveChecksumAck(int byteCount, int delay);
-    virtual int setBaudRate(int baudRate);
-private:
-    int m_baudRate;
-};
+class ByteArray;
 
 enum LoadType {
     ltNone = 0,
@@ -65,7 +32,5 @@ private:
 
     PropellerConnection &m_connection;
 };
-
-void AppendError(const char *fmt, ...);
 
 #endif

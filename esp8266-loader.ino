@@ -118,16 +118,22 @@ void loop()
       {
         int cnt;
         while (client.available()) {
-          if ((cnt = client.read(image, MAX_PACKET_SIZE)) > 0)
-            connection.sendData(image, cnt);
+          if ((cnt = client.read(image, MAX_PACKET_SIZE)) > 0) {
+            if (connection.sendData(image, cnt) != cnt) {
+              client.print("HTTP/1.1 403 sendData failed\r\n");
+              handled = true;
+            }
+          }
         }
-        if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
-          client.print("HTTP/1.1 200 OK\r\n");
-          client.write((char *)image, cnt);
+        if (!handled) {
+          if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
+            client.print("HTTP/1.1 200 OK\r\n");
+            client.write((char *)image, cnt);
+          }
+          else
+            client.print("HTTP/1.1 403 Timeout receiving response\r\n");
+          handled = true;
         }
-        else
-          client.print("HTTP/1.1 403 Timeout receiving response\r\n");
-        handled = true;
       }
       break;
       

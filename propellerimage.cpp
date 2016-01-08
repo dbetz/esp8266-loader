@@ -1,5 +1,7 @@
 #include "propellerimage.h"
 
+#define OFFSET_OF(_s, _f) ((int)&((_s *)0)->_f)
+
 PropellerImage::PropellerImage()
   : m_imageData(0), m_imageSize(0)
 {
@@ -22,25 +24,25 @@ void PropellerImage::setImage(uint8_t *imageData, int imageSize)
 
 uint32_t PropellerImage::clkFreq()
 {
-    return getLong((uint8_t *)&((SpinHdr *)m_imageData)->clkfreq);
+    return getLong(OFFSET_OF(SpinHdr, clkfreq));
 }
 
 void PropellerImage::setClkFreq(uint32_t clkFreq)
 {
-    setLong((uint8_t *)&((SpinHdr *)m_imageData)->clkfreq, clkFreq);
+    setLong(OFFSET_OF(SpinHdr, clkfreq), clkFreq);
 }
 
 uint8_t PropellerImage::clkMode()
 {
-    return *(uint8_t *)&((SpinHdr *)m_imageData)->clkfreq;
+    return getByte(OFFSET_OF(SpinHdr, clkmode));
 }
 
 void PropellerImage::setClkMode(uint8_t clkMode)
 {
-    *(uint8_t *)&((SpinHdr *)m_imageData)->clkfreq = clkMode;
+    setByte(OFFSET_OF(SpinHdr, clkmode), clkMode);
 }
 
-void PropellerImage::updateChecksum()
+uint8_t PropellerImage::updateChecksum()
 {
     SpinHdr *spinHdr = (SpinHdr *)m_imageData;
     uint8_t *p = m_imageData;
@@ -49,26 +51,43 @@ void PropellerImage::updateChecksum()
     for (cnt = m_imageSize; --cnt >= 0; )
         chksum += *p++;
     spinHdr->chksum = SPIN_TARGET_CHECKSUM - chksum;
+    return chksum & 0xff;
 }
 
-uint16_t PropellerImage::getWord(const uint8_t *buf)
+uint8_t PropellerImage::getByte(int offset)
 {
+     uint8_t *buf = m_imageData + offset;
+     return buf[0];
+}
+
+void PropellerImage::setByte(int offset, uint8_t value)
+{
+     uint8_t *buf = m_imageData + offset;
+     buf[0] = value;
+}
+
+uint16_t PropellerImage::getWord(int offset)
+{
+     uint8_t *buf = m_imageData + offset;
      return (buf[1] << 8) | buf[0];
 }
 
-void PropellerImage::setWord(uint8_t *buf, uint16_t value)
+void PropellerImage::setWord(int offset, uint16_t value)
 {
+     uint8_t *buf = m_imageData + offset;
      buf[1] = value >>  8;
      buf[0] = value;
 }
 
-uint32_t PropellerImage::getLong(const uint8_t *buf)
+uint32_t PropellerImage::getLong(int offset)
 {
+     uint8_t *buf = m_imageData + offset;
      return (buf[3] << 24) | (buf[2] << 16) | (buf[1] << 8) | buf[0];
 }
 
-void PropellerImage::setLong(uint8_t *buf, uint32_t value)
+void PropellerImage::setLong(int offset, uint32_t value)
 {
+     uint8_t *buf = m_imageData + offset;
      buf[3] = value >> 24;
      buf[2] = value >> 16;
      buf[1] = value >>  8;
