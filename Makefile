@@ -10,6 +10,8 @@ tools/split:
 binaries:
 	openspin -DMINI -o blink_fast.binary blink.spin
 	openspin -DMINI -DSLOW -o blink_slow.binary blink.spin
+	propeller-elf-gcc -mlmm -Os -o toggle.elf toggle.c
+	propeller-load -s toggle.elf
 
 run-fast:	binaries
 	curl -X POST --data-binary @blink_fast.binary thing2.local/run
@@ -27,4 +29,4 @@ zip:
 
 clean:
 	$(MAKE) -C tools clean
-	rm -f *.binary IP_Loader.h
+	rm -f *.binary *.elf IP_Loader.h

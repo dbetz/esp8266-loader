@@ -1,4 +1,5 @@
 *.binary
+*.elf
 ap.h
 IP_Loader.h
 tools/split
