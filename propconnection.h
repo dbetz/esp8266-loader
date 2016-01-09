@@ -19,6 +19,6 @@ private:
     int m_baudRate;
 };
 
-void AppendError(const char *fmt, ...);
+void AppendResponseText(const char *fmt, ...);
 
 #endif

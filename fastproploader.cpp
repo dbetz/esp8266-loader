@@ -47,28 +47,28 @@ int FastPropellerLoader::loadBegin(int imageSize, int initialBaudRate, int final
 
     /* generate a loader packet */
     if (generateInitialLoaderImage(loaderImage, m_packetID, initialBaudRate, finalBaudRate) != 0) {
-        AppendError("error: generateInitialLoaderImage failed");
+        AppendResponseText("error: generateInitialLoaderImage failed");
         return -1;
     }
  
     /* load the second-stage loader using the propeller ROM protocol */
     if (slowLoader.load(loaderImage.imageData(), loaderImage.imageSize(), ltDownloadAndRun) != 0) {
-        AppendError("error: failed to load second-stage loader");
+        AppendResponseText("error: failed to load second-stage loader");
         return -1;
     }
 
     /* wait for the second-stage loader to start */
     cnt = m_connection.receiveDataExactTimeout(response, sizeof(response), 2000);
-    AppendError("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
+    AppendResponseText("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
     result = getLong(&response[0]);
     if (cnt != 8 || result != m_packetID) {
-        AppendError("error: second-stage loader failed to start - cnt %d, packetID %d, result %d", cnt, m_packetID, result);
+        AppendResponseText("error: second-stage loader failed to start - cnt %d, packetID %d, result %d", cnt, m_packetID, result);
         return -1;
     }
 
     /* switch to the final baud rate */
     if (m_connection.setBaudRate(finalBaudRate) != 0) {
-        AppendError("error: setting final baud rate failed");
+        AppendResponseText("error: setting final baud rate failed");
         return -1;
     }
 
@@ -88,12 +88,13 @@ int FastPropellerLoader::loadData(uint8_t *data, int size)
         int cnt, result;
         if ((cnt = remaining) > MAX_PACKET_SIZE)
             cnt = MAX_PACKET_SIZE;
+        AppendResponseText("Sending %d byte packet", cnt);
         if (transmitPacket(m_packetID, p, cnt, &result) != 0) {
-            AppendError("error: transmitPacket failed");
+            AppendResponseText("error: transmitPacket failed");
             return -1;
         }
         if (result != m_packetID - 1) {
-            AppendError("error: unexpected result: expected %d, received %d", m_packetID - 1, result);
+            AppendResponseText("error: unexpected result: expected %d, received %d", m_packetID - 1, result);
             return -1;
         }
         remaining -= cnt;
@@ -119,11 +120,11 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
 
     /* transmit the RAM verify packet and verify the checksum */
     if (transmitPacket(m_packetID, verifyRAM, sizeof(verifyRAM), &result) != 0) {
-        AppendError("error: transmitPacket failed");
+        AppendResponseText("error: transmitPacket failed");
         return -1;
     }
     if (result != -m_checksum) {
-        AppendError("error: bad checksum");
+        AppendResponseText("error: bad checksum");
         return -1;
     }
     m_packetID = -m_checksum;
@@ -131,11 +132,11 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
     /* program the eeprom if requested */
     if (loadType & ltDownloadAndProgram) {
         if (transmitPacket(m_packetID, programVerifyEEPROM, sizeof(programVerifyEEPROM), &result, 8000) != 0) {
-            AppendError("error: transmitPacket failed");
+            AppendResponseText("error: transmitPacket failed");
             return -1;
         }
         if (result != -m_checksum*2) {
-            AppendError("error: bad checksum");
+            AppendResponseText("error: bad checksum");
             return -1;
         }
         m_packetID = -m_checksum*2;
@@ -143,18 +144,18 @@ int FastPropellerLoader::loadEnd(LoadType loadType)
 
     /* transmit the readyToLaunch packet */
     if (transmitPacket(m_packetID, readyToLaunch, sizeof(readyToLaunch), &result) != 0) {
-        AppendError("error: transmitPacket failed");
+        AppendResponseText("error: transmitPacket failed");
         return -1;
     }
     if (result != m_packetID - 1) {
-        AppendError("error: readyToLaunch failed");
+        AppendResponseText("error: readyToLaunch failed");
         return -1;
     }
     --m_packetID;
 
     /* transmit the launchNow packet which actually starts the downloaded program */
     if (transmitPacket(0, launchNow, sizeof(launchNow), NULL) != 0) {
-        AppendError("error: transmitPacket failedp");
+        AppendResponseText("error: transmitPacket failedp");
         return -1;
     }
 
@@ -180,20 +181,20 @@ int FastPropellerLoader::transmitPacket(int id, uint8_t *payload, int payloadSiz
         setLong(&hdr[4], tag);
         if (m_connection.sendData(hdr, sizeof(hdr)) != sizeof(hdr)
         ||  m_connection.sendData(payload, payloadSize) != payloadSize) {
-            AppendError("error: sendData failed");
+            AppendResponseText("error: sendData failed");
             return -1;
         }
         
         /* receive the response */
         if (pResult) {
             cnt = m_connection.receiveDataExactTimeout(response, sizeof(response), timeout);
-            AppendError("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
+            AppendResponseText("response: %02x %02x %02x %02x %02x %02x %02x %02x", response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7]); 
             result = getLong(&response[0]);
             if (cnt == 8 && getLong(&response[4]) == tag && result != id) {
                 *pResult = result;
                 return 0;
             }
-            AppendError("error: transmitPacket failed - cnt %d, tag %d, result %d, id %d", cnt, tag, result, id);
+            AppendResponseText("error: transmitPacket failed - cnt %d, tag %d, result %d, id %d", cnt, tag, result, id);
         }
 
         /* don't wait for a result */

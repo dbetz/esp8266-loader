@@ -66,7 +66,7 @@ int PropellerConnection::receiveChecksumAck(int byteCount, int delay)
             return buf[0] == 0xFE ? 0 : -1;
     } while (--retries > 0);
 
-    AppendError("error: timeout waiting for checksum ack");
+    AppendResponseText("error: timeout waiting for checksum ack");
     return -1;
 }
 

@@ -171,27 +171,27 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
 
     /* reset the Propeller */
     if (m_connection.generateResetSignal() != 0) {
-        AppendError("error: generateResetSignal failed");
+        AppendResponseText("error: generateResetSignal failed");
         return -1;
     }
 
     /* send the packet */
     if (m_connection.sendData(packet.data(), packet.size()) != packet.size()) {
-        AppendError("error: sendData failed");
+        AppendResponseText("error: sendData failed");
         return -1;
     }
 
     /* receive the handshake response and the hardware version */
     int cnt = sizeof(rxHandshake) + 4;
     if (m_connection.receiveDataExactTimeout(packet.data(), cnt, 2000) != cnt) {
-        AppendError("error: receiveDataExactTimeout failed");
+        AppendResponseText("error: receiveDataExactTimeout failed");
         return -1;
     }
 
     /* verify the rx handshake */
     uint8_t *buf = packet.data();
     if (memcmp(buf, rxHandshake, sizeof(rxHandshake)) != 0) {
-        AppendError("error: handshake failed");
+        AppendResponseText("error: handshake failed");
         return -1;
     }
 
@@ -200,13 +200,13 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
     for (int i = sizeof(rxHandshake); i < cnt; ++i)
         version = ((version >> 2) & 0x3F) | ((buf[i] & 0x01) << 6) | ((buf[i] & 0x20) << 2);
     if (version != 1) {
-        AppendError("error: wrong propeller version");
+        AppendResponseText("error: wrong propeller version");
         return -1;
     }
 
     /* receive and verify the checksum */
     if (m_connection.receiveChecksumAck(packet.size(), 250) != 0) {
-        AppendError("error: checksum verification failed");
+        AppendResponseText("error: checksum verification failed");
         return -1;
     }
 
@@ -215,13 +215,13 @@ int PropellerLoader::load(uint8_t *image, int imageSize, LoadType loadType)
 
         /* wait for an ACK indicating a successful EEPROM programming */
         if (m_connection.receiveChecksumAck(0, 5000) != 0) {
-            AppendError("error: EEPROM programming failed");
+            AppendResponseText("error: EEPROM programming failed");
             return -1;
         }
 
         /* wait for an ACK indicating a successful EEPROM verification */
         if (m_connection.receiveChecksumAck(0, 2000) != 0) {
-            AppendError("error: EEPROM verification failed");
+            AppendResponseText("error: EEPROM verification failed");
             return -1;
         }
     }

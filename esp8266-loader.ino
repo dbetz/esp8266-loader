@@ -34,8 +34,8 @@ enum TransactionType {
 };
 
 const char *FindArg(String &req, const char *key);
-void InitErrorResponse();
-void SendErrorResponse(WiFiClient &client, int code, const char *fmt, ...);
+void InitResponse();
+void SendResponse(WiFiClient &client, int code, const char *fmt, ...);
 void SendTextResponse(WiFiClient &client, const char *result);
 void connectWiFi();
 void setupMDNS();
@@ -71,7 +71,7 @@ void loop()
 
   bool handled = false;
   const char *result = NULL;
-  InitErrorResponse();
+  InitResponse();
   
   if (req.indexOf("POST") == 0) {
     TransactionType transactionType = ttUnknown;
@@ -150,11 +150,11 @@ void loop()
         if ((arg = FindArg(req, "final-baud-rate=")) != NULL)
           finalBaudRate = atoi(arg);
         if (imageSize == -1)
-          SendErrorResponse(client, 403, "image size missing");
+          SendResponse(client, 403, "image size missing");
         else if (fastLoader.loadBegin(imageSize, initialBaudRate, finalBaudRate) == 0)
-          client.print("HTTP/1.1 200 OK\r\n");
+          SendResponse(client, 200, "OK");
         else
-          SendErrorResponse(client, 403, "loadBegin failed");
+          SendResponse(client, 403, "loadBegin failed");
         handled = true;
       }
       break;
@@ -163,15 +163,17 @@ void loop()
       {
         int cnt = 0;
         while (client.available()) {
-          if ((cnt = client.read(image, sizeof(image))) > 0)
+          if ((cnt = client.readBytes(image, sizeof(image))) > 0) {
+            AppendResponseText("Loading %d bytes", cnt);
             if (fastLoader.loadData(image, cnt) != 0) {
-              SendErrorResponse(client, 403, "loadData failed");
+              SendResponse(client, 403, "loadData failed");
               cnt = -1;
               break;
             }
+          }
         }
         if (cnt >= 0 && !client.available())
-          client.print("HTTP/1.1 200 OK\r\n");
+          SendResponse(client, 200, "OK");
         handled = true;
       }
       break;
@@ -186,9 +188,9 @@ void loop()
         else if (req.indexOf("command=program") != -1)
           loadType = ltDownloadAndProgram;
         if (fastLoader.loadEnd(loadType) == 0)
-          client.print("HTTP/1.1 200 OK\r\n");
+          SendResponse(client, 200, "OK");
         else
-          SendErrorResponse(client, 403, "loadEnd failed");
+          SendResponse(client, 403, "loadEnd failed");
         handled = true;
       }
       break;
@@ -218,12 +220,12 @@ const char *FindArg(String &req, const char *key)
 
 String errorText;
 
-void InitErrorResponse()
+void InitResponse()
 {
   errorText.remove(0);
 }
 
-void AppendError(const char *fmt, ...)
+void AppendResponseText(const char *fmt, ...)
 {
   char buf[1024];
   va_list ap;
@@ -235,7 +237,7 @@ void AppendError(const char *fmt, ...)
   errorText += "</p>\r\n";
 }
 
-void SendErrorResponse(WiFiClient &client, int code, const char *fmt, ...)
+void SendResponse(WiFiClient &client, int code, const char *fmt, ...)
 {
   char buf[1024];
   va_list ap;
