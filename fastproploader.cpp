@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "fastproploader.h"
 
+//#define FAILSAFE_TIMEOUT        2.0         /* Number of seconds to wait for a packet from the host */
+#define FAILSAFE_TIMEOUT        10.0        /* Number of seconds to wait for a packet from the host */
 #define MAX_RX_SENSE_ERROR      23          /* Maximum number of cycles by which the detection of a start bit could be off (as affected by the Loader code) */
 
 // Offset (in bytes) from end of Loader Image pointing to where most host-initialized values exist.
@@ -293,7 +295,7 @@ int FastPropellerLoader::generateInitialLoaderImage(PropellerImage &image, int p
     image.setLong(initAreaOffset + 12, (int)trunc(1.5 * ClockSpeed / finalBaudRate - MAX_RX_SENSE_ERROR + 0.5));
 
     // Failsafe Timeout (seconds-worth of Loader's Receive loop iterations).
-    image.setLong(initAreaOffset + 16, (int)trunc(2.0 * ClockSpeed / (3 * 4) + 0.5));
+    image.setLong(initAreaOffset + 16, (int)trunc(FAILSAFE_TIMEOUT * ClockSpeed / (3 * 4) + 0.5));
 
     // EndOfPacket Timeout (2 bytes worth of Loader's Receive loop iterations).
     image.setLong(initAreaOffset + 20, (int)trunc((2.0 * ClockSpeed / finalBaudRate) * (10.0 / 12.0) + 0.5));
