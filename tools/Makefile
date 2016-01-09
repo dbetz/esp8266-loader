@@ -1,5 +1,12 @@
-bin2c:
-	cc -o bin2c bin2c.c
+CFLAGS=-Wall
+
+all:	split bin2c
+
+split:	split.c
+	cc $(CFLAGS) -o split $<
+
+bin2c:	bin2c.c
+	cc $(CFLAGS) -o bin2c $<
 
 clean:
-	rm bin2c
+	rm -f split bin2c

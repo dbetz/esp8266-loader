@@ -1,3 +1,12 @@
+all:	IP_Loader.h binaries
+
+IP_Loader.h:	IP_Loader.spin tools/split
+	openspin IP_loader.spin
+	./tools/split IP_Loader.binary IP_Loader.h
+
+tools/split:
+	$(MAKE) -C tools
+
 binaries:
 	openspin -DMINI -o blink_fast.binary blink.spin
 	openspin -DMINI -DSLOW -o blink_slow.binary blink.spin
@@ -17,4 +26,5 @@ zip:
 	zip -r ../esp8266-loader-$(shell date "+%Y-%m-%d").zip *
 
 clean:
-	rm -f *.binary
+	$(MAKE) -C tools clean
+	rm -f *.binary IP_Loader.h
