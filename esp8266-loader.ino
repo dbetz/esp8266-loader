@@ -20,7 +20,7 @@ FastPropellerLoader fastLoader(connection);
 
 // spin .binary image buffer also used as a general purpose buffer
 // this must be >= MAX_PACKET_SIZE defined in fastproploader.h
-#define MAX_IMAGE_SIZE  4096
+#define MAX_IMAGE_SIZE  8192
 
 uint8_t image[MAX_IMAGE_SIZE]; // don't want big arrays on the stack
 

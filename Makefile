@@ -8,9 +8,9 @@ tools/split:
 	$(MAKE) -C tools
 
 binaries:
-	openspin -DMINI -o blink_fast.binary blink.spin
-	openspin -DMINI -DSLOW -o blink_slow.binary blink.spin
-	propeller-elf-gcc -mlmm -Os -o toggle.elf toggle.c
+	openspin -DMINI -o blink_fast.binary tests/blink.spin
+	openspin -DMINI -DSLOW -o blink_slow.binary tests/blink.spin
+	propeller-elf-gcc -mlmm -Os -o toggle.elf tests/toggle.c
 	propeller-load -s toggle.elf
 
 run-fast:	binaries
