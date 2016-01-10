@@ -1,5 +1,5 @@
 FILE=LargeSpinCode.binary
-SIZE=32468
+SIZE=32460
 #FILE=blink_fast.binary
 #SIZE=1024
 #FILE=toggle.binary
@@ -9,3 +9,4 @@ MODULE=10.0.1.47
 curl -v -X POST $MODULE/load-begin?size=$SIZE
 curl -v -X POST -H "Expect:" --data-binary @$FILE $MODULE/load-data 
 curl -v -X POST $MODULE/load-end?command=run
+telnet $MODULE

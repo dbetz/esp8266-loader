@@ -5,6 +5,9 @@
 #include "proploader.h"
 #include "fastproploader.h"
 
+// baud rate to use after a successful load
+#define PROGRAM_BAUD_RATE 115200
+
 //////////////////////
 // WiFi Definitions //
 //////////////////////
@@ -14,13 +17,16 @@
 #include "ap.h"
 
 WiFiServer server(80);
+WiFiServer telnetServer(23);
+WiFiClient telnetClient;
+
 PropellerConnection connection;
 PropellerLoader loader(connection);
 FastPropellerLoader fastLoader(connection);
 
 // spin .binary image buffer also used as a general purpose buffer
 // this must be >= MAX_PACKET_SIZE defined in fastproploader.h
-#define MAX_IMAGE_SIZE  8192
+#define MAX_IMAGE_SIZE    8192
 
 uint8_t image[MAX_IMAGE_SIZE]; // don't want big arrays on the stack
 
@@ -33,6 +39,8 @@ enum TransactionType {
   ttPacket
 };
 
+void handleHTTP(WiFiClient &client);
+void handleTelnet(WiFiClient &client);
 const char *FindArg(String &req, const char *key);
 void InitResponse();
 void SendResponse(WiFiClient &client, int code, const char *fmt, ...);
@@ -45,6 +53,7 @@ void setup()
   Serial.begin(INITIAL_BAUD_RATE);
   connectWiFi();
   server.begin();
+  telnetServer.begin();
   setupMDNS();
 }
 
@@ -52,9 +61,25 @@ void loop()
 {
   // Check if a client has connected
   WiFiClient client = server.available();
-  if (!client)
-    return;
+  if (client)
+    handleHTTP(client);
 
+  if (telnetServer.hasClient()) {
+    if (telnetClient && telnetClient.connected())
+      telnetClient.stop();
+    telnetClient = telnetServer.available();
+  }
+
+  if (telnetClient && telnetClient.connected()) {
+    while (Serial.available())
+      telnetClient.write(Serial.read());
+  }
+
+  delay(1);
+}
+
+void handleHTTP(WiFiClient &client)
+{
   // Read the first line of the request
   String req = client.readStringUntil('\r');
   if (client.peek() == '\n')
@@ -188,8 +213,10 @@ void loop()
           loadType = ltDownloadAndProgramAndRun;
         else if (req.indexOf("command=program") != -1)
           loadType = ltDownloadAndProgram;
-        if (fastLoader.loadEnd(loadType) == 0)
+        if (fastLoader.loadEnd(loadType) == 0) {
           SendResponse(client, 200, "OK");
+          Serial.begin(PROGRAM_BAUD_RATE);
+        }
         else
           SendResponse(client, 403, "loadEnd failed");
         handled = true;
@@ -203,12 +230,12 @@ void loop()
   // send an error response for unknown requests
   if (!handled)
     client.print("HTTP/1.1 404 Not found\r\n");
+}
 
-  delay(1);
-  //Serial.println("Client disonnected");
-
-  // The client will actually be disconnected 
-  // when the function returns and 'client' object is destroyed
+void handleTelnet(WiFiClient &client)
+{
+  while (client.available())
+    Serial.write(client.read()); 
 }
 
 const char *FindArg(String &req, const char *key)

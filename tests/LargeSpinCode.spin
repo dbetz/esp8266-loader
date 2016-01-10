@@ -24,8 +24,8 @@ OBJ
 
 PUB Main | idx                                  
 
-  dira[LED1] := 1
-  outa[LED1] := 1
+'  dira[LED1] := 1
+'  outa[LED1] := 1
 
   dira[23..16]~~
   
