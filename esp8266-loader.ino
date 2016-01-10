@@ -162,7 +162,8 @@ void loop()
     case ttLoadData:
       {
         int cnt = 0;
-        while (client.available()) {
+        while ((cnt = client.available()) > 0) {
+          AppendResponseText("Data available: %d", cnt);
           if ((cnt = client.readBytes(image, sizeof(image))) > 0) {
             AppendResponseText("Loading %d bytes", cnt);
             if (fastLoader.loadData(image, cnt) != 0) {

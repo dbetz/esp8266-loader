@@ -10,6 +10,7 @@ tools/split:
 binaries:
 	openspin -DMINI -o blink_fast.binary tests/blink.spin
 	openspin -DMINI -DSLOW -o blink_slow.binary tests/blink.spin
+	openspin -o LargeSpinCode.binary tests/LargeSpinCode.spin
 	propeller-elf-gcc -mlmm -Os -o toggle.elf tests/toggle.c
 	propeller-load -s toggle.elf
 

@@ -171,6 +171,8 @@ static void DumpSpinHdr(FILE *fp, const char *tag, SpinHdr *hdr)
     fprintf(fp, "    pcurr:   %04x\n", hdr->pcurr);
     fprintf(fp, "    dcurr:   %04x\n", hdr->dcurr);
     fprintf(fp, "    xxxxx:   %04x\n", hdr->xxxxx);
+    fprintf(fp, "    yyyyy:   %04x\n", hdr->yyyyy);
+    fprintf(fp, "    zzzzz:   %04x\n", hdr->zzzzz);
     fprintf(fp, "*/\n\n");
 }
 #endif
