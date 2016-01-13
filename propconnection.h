@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define PROPELLER_RESET_PIN 2
+
 #define DEF_BAUD_RATE 115200
 
 class PropellerConnection

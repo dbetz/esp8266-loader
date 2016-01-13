@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include "propconnection.h"
 
-#define PROPELLER_RESET_PIN 2
-
 // number of milliseconds between attempts to read the checksum ack
 #define CALIBRATE_PAUSE     10
 

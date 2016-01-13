@@ -9,8 +9,7 @@ CON
   _clkmode = xtal1 + pll16x                             ' Crystal and PLL settings.
   _xinfreq = 5_000_000                                  ' 5 MHz crystal (5 MHz x 16 = 80 MHz).
 
-  LED1 = 6
-  LED2 = 7
+  LED = 7
 
   DataSize = 256
     
@@ -23,9 +22,6 @@ OBJ
   pst    : "Parallax Serial Terminal"                   'Serial communication object
 
 PUB Main | idx                                  
-
-'  dira[LED1] := 1
-'  outa[LED1] := 1
 
   dira[23..16]~~
   
@@ -43,8 +39,8 @@ PUB Main | idx
   
   pst.Str(string("CRC: $"))
   pst.Hex(CRC, 8)                                       'Display results
-  dira[LED2] := 1
-  outa[LED2] := 1
+  dira[LED] := 1
+  outa[LED] := 1
   repeat        
     outa[23..16] := CRC ->= 8
     waitcnt(clkfreq / 10 + cnt)

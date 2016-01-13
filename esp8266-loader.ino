@@ -8,6 +8,9 @@
 // baud rate to use after a successful load
 #define PROGRAM_BAUD_RATE 115200
 
+// UART TX pin
+#define TXPIN 1
+
 //////////////////////
 // WiFi Definitions //
 //////////////////////
@@ -36,7 +39,8 @@ enum TransactionType {
   ttLoadBegin,
   ttLoadData,
   ttLoadEnd,
-  ttPacket
+  ttPacket,
+  ttStamp
 };
 
 void handleHTTP(WiFiClient &client);
@@ -45,6 +49,8 @@ const char *FindArg(String &req, const char *key);
 void InitResponse();
 void SendResponse(WiFiClient &client, int code, const char *fmt, ...);
 void SendTextResponse(WiFiClient &client, const char *result);
+void resetStamp();
+bool isBS2();
 void connectWiFi();
 void setupMDNS();
 
@@ -122,6 +128,8 @@ void handleHTTP(WiFiClient &client)
       transactionType = ttLoadEnd;
     else if (req.indexOf("/packet") != -1)
       transactionType = ttPacket;
+    else if (req.indexOf("/stamp") != -1)
+      transactionType = ttStamp;
 
     switch (transactionType) {
       
@@ -159,6 +167,37 @@ void handleHTTP(WiFiClient &client)
             client.print("HTTP/1.1 403 Timeout receiving response\r\n");
           handled = true;
         }
+      }
+      break;
+      
+    case ttStamp: // download code to a BASIC Stamp module
+      {
+        if (isBS2())
+          AppendResponseText("Found a BS2");
+        else
+          AppendResponseText("Unknown type of stamp");
+        SendResponse(client, 200, "OK");
+        handled = true;
+#if 0
+        int cnt;
+        while (client.available()) {
+          if ((cnt = client.read(image, MAX_PACKET_SIZE)) > 0) {
+            if (connection.sendData(image, cnt) != cnt) {
+              client.print("HTTP/1.1 403 sendData failed\r\n");
+              handled = true;
+            }
+          }
+        }
+        if (!handled) {
+          if ((cnt = connection.receiveDataExactTimeout(image, 8, 2000)) == 8) {
+            client.print("HTTP/1.1 200 OK\r\n");
+            client.write((char *)image, cnt);
+          }
+          else
+            client.print("HTTP/1.1 403 Timeout receiving response\r\n");
+          handled = true;
+        }
+#endif
       }
       break;
       
@@ -292,6 +331,78 @@ void SendTextResponse(WiFiClient &client, const char *result)
   s += result;
   s += "</html>\r\n";
   client.print(s);
+}
+
+void resetStamp()
+{
+  digitalWrite(PROPELLER_RESET_PIN, HIGH);
+  Serial.end();       // stop the serial object to use the TX pin
+  pinMode(TXPIN, OUTPUT);
+  digitalWrite(TXPIN, LOW);
+  delay(2);
+  digitalWrite(PROPELLER_RESET_PIN, LOW);
+  delay(36);
+  Serial.begin(9600); // restart serial object
+  delay(20);
+  while (Serial.available())
+    Serial.read();
+}
+
+int nextByte()
+{
+  int cnt = 100;
+  while (--cnt >= 0) {
+    if (Serial.available())
+      return Serial.read();
+    delay(10);
+  }
+  return -1;
+}
+
+bool isBS2()
+{
+  int byte;
+  
+  resetStamp();
+  
+  Serial.write('B');
+  if ((byte = nextByte()) != 'B') {
+    AppendResponseText("No echo of 'B' %02x", byte);
+    return false;
+  }
+  if ((byte = nextByte()) != -'B' & 0xff) {
+    AppendResponseText("No complement of 'B' %02x", byte);
+    return false;
+  }
+  
+  Serial.write('S');
+  if ((byte = nextByte()) != 'S') {
+    AppendResponseText("No echo of 'S' %02x", byte);
+    return false;
+  }
+  if ((byte = nextByte()) != -'S' & 0xff) {
+    AppendResponseText("No complement of 'S' %02x", byte);
+    return false;
+  }
+  
+  Serial.write('2');
+  if ((byte = nextByte()) != '2') {
+    AppendResponseText("No echo of '2' %02x", byte);
+    return false;
+  }
+  if ((byte = nextByte()) != -'2' & 0xff) {
+    AppendResponseText("No complement of '2' %02x", byte);
+    return false;
+  }
+  
+  Serial.write('0');
+  if ((byte = nextByte()) != '0') {
+    AppendResponseText("No echo of '0' %02x", byte);
+    return false;
+  }
+  AppendResponseText("BS2 version is %02x", nextByte());
+  
+  return true;
 }
 
 void connectWiFi()
