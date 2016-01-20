@@ -1,4 +1,4 @@
-#include "propellerimage.h"
+#include "propimage.h"
 
 #define OFFSET_OF(_s, _f) ((int)&((_s *)0)->_f)
 

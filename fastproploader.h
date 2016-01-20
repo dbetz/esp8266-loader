@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "propellerimage.h"
+#include "propimage.h"
 #include "proploader.h"
 
 // size of data buffer in the second-stage loader

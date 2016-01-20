@@ -2,8 +2,12 @@
 #include <stdarg.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include <WiFiUDP.h>
 #include "proploader.h"
 #include "fastproploader.h"
+
+//#include "MySoftwareSerial.h"
+//#define SUPPORT_STAMP
 
 // baud rate to use after a successful load
 #define PROGRAM_BAUD_RATE 115200
@@ -22,6 +26,7 @@
 WiFiServer server(80);
 WiFiServer telnetServer(23);
 WiFiClient telnetClient;
+WiFiUDP discoverServer;
 
 PropellerConnection connection;
 PropellerLoader loader(connection);
@@ -60,6 +65,7 @@ void setup()
   connectWiFi();
   server.begin();
   telnetServer.begin();
+  discoverServer.begin(2000);
   setupMDNS();
 }
 
@@ -79,6 +85,14 @@ void loop()
   if (telnetClient && telnetClient.connected()) {
     while (Serial.available())
       telnetClient.write(Serial.read());
+  }
+
+#define DISCOVER_REPLY  "ESP8266 here!\n"
+int cnt;
+  if ((cnt = discoverServer.parsePacket()) > 0) {
+    discoverServer.beginPacket(discoverServer.remoteIP(), discoverServer.remotePort());
+    discoverServer.write(DISCOVER_REPLY, strlen(DISCOVER_REPLY));
+    discoverServer.endPacket();
   }
 
   delay(1);
@@ -128,8 +142,10 @@ void handleHTTP(WiFiClient &client)
       transactionType = ttLoadEnd;
     else if (req.indexOf("/packet") != -1)
       transactionType = ttPacket;
+#ifdef SUPPORT_STAMP
     else if (req.indexOf("/stamp") != -1)
       transactionType = ttStamp;
+#endif
 
     switch (transactionType) {
       
@@ -170,6 +186,7 @@ void handleHTTP(WiFiClient &client)
       }
       break;
       
+#ifdef SUPPORT_STAMP
     case ttStamp: // download code to a BASIC Stamp module
       {
         if (isBS2())
@@ -200,6 +217,7 @@ void handleHTTP(WiFiClient &client)
 #endif
       }
       break;
+#endif
       
     case ttLoadBegin:
       {
@@ -333,27 +351,37 @@ void SendTextResponse(WiFiClient &client, const char *result)
   client.print(s);
 }
 
+#ifdef SUPPORT_STAMP
+
+#include <SoftwareSerial.h>
+MySoftwareSerial softSerial(3, 1, true); // RX, TX, Invert
+
 void resetStamp()
 {
-  digitalWrite(PROPELLER_RESET_PIN, HIGH);
   Serial.end();       // stop the serial object to use the TX pin
   pinMode(TXPIN, OUTPUT);
   digitalWrite(TXPIN, LOW);
+  digitalWrite(PROPELLER_RESET_PIN, LOW);
+  delay(2);
+  digitalWrite(TXPIN, HIGH);
+  delay(2);
+  digitalWrite(PROPELLER_RESET_PIN, HIGH);
   delay(2);
   digitalWrite(PROPELLER_RESET_PIN, LOW);
   delay(36);
-  Serial.begin(9600); // restart serial object
+  digitalWrite(TXPIN, LOW);
+  softSerial.begin(9600); // restart serial object
   delay(20);
-  while (Serial.available())
-    Serial.read();
+  while (softSerial.available())
+    softSerial.read();
 }
 
 int nextByte()
 {
   int cnt = 100;
   while (--cnt >= 0) {
-    if (Serial.available())
-      return Serial.read();
+    if (softSerial.available())
+      return softSerial.read();
     delay(10);
   }
   return -1;
@@ -365,45 +393,47 @@ bool isBS2()
   
   resetStamp();
   
-  Serial.write('B');
-  if ((byte = nextByte()) != 'B') {
-    AppendResponseText("No echo of 'B' %02x", byte);
-    return false;
-  }
-  if ((byte = nextByte()) != -'B' & 0xff) {
+  softSerial.write('B');
+//  if ((byte = nextByte()) != 'B') {
+//    AppendResponseText("No echo of 'B' %02x", byte);
+//    return false;
+//  }
+  if ((byte = nextByte()) != (-'B' & 0xff)) {
     AppendResponseText("No complement of 'B' %02x", byte);
     return false;
   }
   
-  Serial.write('S');
-  if ((byte = nextByte()) != 'S') {
-    AppendResponseText("No echo of 'S' %02x", byte);
-    return false;
-  }
-  if ((byte = nextByte()) != -'S' & 0xff) {
+  softSerial.write('S');
+//  if ((byte = nextByte()) != 'S') {
+//    AppendResponseText("No echo of 'S' %02x", byte);
+//    return false;
+//  }
+  if ((byte = nextByte()) != (-'S' & 0xff)) {
     AppendResponseText("No complement of 'S' %02x", byte);
     return false;
   }
   
-  Serial.write('2');
-  if ((byte = nextByte()) != '2') {
-    AppendResponseText("No echo of '2' %02x", byte);
-    return false;
-  }
-  if ((byte = nextByte()) != -'2' & 0xff) {
+  softSerial.write('2');
+//  if ((byte = nextByte()) != '2') {
+//    AppendResponseText("No echo of '2' %02x", byte);
+//    return false;
+//  }
+  if ((byte = nextByte()) != (-'2' & 0xff)) {
     AppendResponseText("No complement of '2' %02x", byte);
     return false;
   }
   
-  Serial.write('0');
-  if ((byte = nextByte()) != '0') {
-    AppendResponseText("No echo of '0' %02x", byte);
-    return false;
-  }
+  softSerial.write((uint8_t)0x00);
+//  if ((byte = nextByte()) != '0') {
+//    AppendResponseText("No echo of 0x00 %02x", byte);
+//    return false;
+//  }
   AppendResponseText("BS2 version is %02x", nextByte());
   
   return true;
 }
+
+#endif
 
 void connectWiFi()
 {
