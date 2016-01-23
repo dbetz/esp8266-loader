@@ -40,7 +40,7 @@ static void DumpRange(FILE *fp, uint8_t *image, int imageOffset, int endOffset);
 int main(int argc, char *argv[])
 {
     uint8_t *image;
-    int imageSize, imageOffset, delta, cnt, oldSpinCodeOffset, firstOverlayMarker, overlayIndex, overlayOffset, chksum;
+    int imageSize, imageOffset, delta, oldSpinCodeOffset, firstOverlayMarker, overlayIndex, overlayOffset, chksum;
     FILE *ifp, *ofp;
     uint32_t *imagePtr, value;
     SpinHdr *hdr;
@@ -145,7 +145,6 @@ int main(int argc, char *argv[])
             DumpRange(ofp, image, overlayOffset, imageOffset);
             fprintf(ofp, "};\n\n");
             overlayOffset = imageOffset + sizeof(uint32_t);
-            cnt = 0;
         }
         imageOffset += sizeof(uint32_t);
     }

@@ -1,7 +1,7 @@
 all:	IP_Loader.h binaries
 
 IP_Loader.h:	IP_Loader.spin tools/split
-	openspin IP_loader.spin
+	openspin IP_Loader.spin
 	./tools/split IP_Loader.binary IP_Loader.h
 
 tools/split:
