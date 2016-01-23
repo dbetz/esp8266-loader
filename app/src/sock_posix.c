@@ -8,6 +8,7 @@
 #include <iphlpapi.h>
 #include <conio.h>
 #else
+#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <termios.h>
 #endif
@@ -469,8 +470,6 @@ int GetInterfaceAddresses(IFADDR *addrs, int max)
     return cnt;
 #endif
 }
-
-#include <arpa/inet.h>
 
 const char *AddressToString(SOCKADDR_IN *addr)
 {
