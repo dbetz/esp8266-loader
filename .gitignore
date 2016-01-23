@@ -1,4 +1,6 @@
+espload-*-build
 *.binary
+*.bin
 *.elf
 ap.h
 IP_Loader.h

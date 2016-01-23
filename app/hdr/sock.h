@@ -40,15 +40,15 @@ typedef struct {
 
 int GetInterfaceAddresses(IFADDR *addrs, int max);
 int GetInternetAddress(const char *hostName, short port, SOCKADDR_IN *addr);
-const char *AddrToString(uint32_t addr);
-int StringToAddr(const char *addr, uint32_t *pAddr);
+const char *AddressToString(SOCKADDR_IN *addr);
 int OpenBroadcastSocket(short port, SOCKET *pSocket);
-int ConnectSocket(uint32_t ipaddr, short port, SOCKET *pSocket);
+int ConnectSocket(SOCKADDR_IN *addr, SOCKET *pSocket);
 int BindSocket(short port, SOCKET *pSocket);
 void CloseSocket(SOCKET sock);
 int SocketDataAvailableP(SOCKET sock, int timeout);
 int SendSocketData(SOCKET sock, void *buf, int len);
 int ReceiveSocketData(SOCKET sock, void *buf, int len);
+int ReceiveSocketDataAndAddress(SOCKET sock, void *buf, int len, SOCKADDR_IN *addr);
 int ReceiveSocketDataTimeout(SOCKET sock, void *buf, int len, int timeout);
 int SendSocketDataTo(SOCKET sock, void *buf, int len, SOCKADDR_IN *addr);
 int ReceiveSocketDataFrom(SOCKET sock, void *buf, int len, SOCKADDR_IN *addr);

@@ -5,19 +5,19 @@
 #define CALIBRATE_PAUSE     10
 
 PropellerConnection::PropellerConnection()
-  : m_baudRate(DEF_BAUD_RATE)
+    : m_baudRate(-1), m_resetPin(-1)
 {
-    pinMode(PROPELLER_RESET_PIN, OUTPUT);
-    digitalWrite(PROPELLER_RESET_PIN, HIGH);
 }
 
 int PropellerConnection::generateResetSignal()
 {
+    if (m_resetPin == -1)
+        return -1;
     Serial.flush();
     delay(10);
-    digitalWrite(PROPELLER_RESET_PIN, LOW);
+    digitalWrite(m_resetPin, LOW);
     delay(10);
-    digitalWrite(PROPELLER_RESET_PIN, HIGH);
+    digitalWrite(m_resetPin, HIGH);
     delay(100);
     while (Serial.available())
         Serial.read();
@@ -70,7 +70,25 @@ int PropellerConnection::receiveChecksumAck(int byteCount, int delay)
 
 int PropellerConnection::setBaudRate(int baudRate)
 {
-    Serial.begin(baudRate);
+    if (baudRate != m_baudRate) {
+        if (m_baudRate != -1)
+          Serial.end();
+        if ((m_baudRate = baudRate) != -1)
+          Serial.begin(m_baudRate);
+    }
+    return 0;
+}
+
+int PropellerConnection::setResetPin(int resetPin)
+{
+    if (resetPin != m_resetPin) {
+        if (m_resetPin != -1)
+            pinMode(m_resetPin, INPUT);
+        if ((m_resetPin = resetPin) != -1) {
+            pinMode(m_resetPin, OUTPUT);
+            digitalWrite(m_resetPin, HIGH);
+        }
+    }
     return 0;
 }
 

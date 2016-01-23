@@ -3,22 +3,25 @@
 
 #include <stdint.h>
 
-#define PROPELLER_RESET_PIN 2
-
 #define DEF_BAUD_RATE 115200
+#define DEF_RESET_PIN 12
 
 class PropellerConnection
 {
 public:
     PropellerConnection();
     ~PropellerConnection() {}
-    virtual int generateResetSignal();
-    virtual int sendData(uint8_t *buffer, int size);
-    virtual int receiveDataExactTimeout(uint8_t *buffer, int size, int timeout);
-    virtual int receiveChecksumAck(int byteCount, int delay);
-    virtual int setBaudRate(int baudRate);
+    int generateResetSignal();
+    int sendData(uint8_t *buffer, int size);
+    int receiveDataExactTimeout(uint8_t *buffer, int size, int timeout);
+    int receiveChecksumAck(int byteCount, int delay);
+    int baudRate() { return m_baudRate; }
+    int setBaudRate(int baudRate);
+    int resetPin() { return m_resetPin; }
+    int setResetPin(int pin);
 private:
     int m_baudRate;
+    int m_resetPin;
 };
 
 void AppendResponseText(const char *fmt, ...);

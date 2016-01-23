@@ -106,9 +106,8 @@ int OpenBroadcastSocket(short port, SOCKET *pSocket)
 }
 
 /* ConnectSocket - connect to the server */
-int ConnectSocket(uint32_t ipaddr, short port, SOCKET *pSocket)
+int ConnectSocket(SOCKADDR_IN *addr, SOCKET *pSocket)
 {
-    SOCKADDR_IN addr;
     SOCKET sock;
     
 #ifdef __MINGW32__
@@ -117,29 +116,11 @@ int ConnectSocket(uint32_t ipaddr, short port, SOCKET *pSocket)
 #endif
 
     /* create the socket */
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+    if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         return -1;
 
-    /* setup the address */
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(port);
-
-    /* bind the socket to the port (responses are always sent to 0xBEE) */
-    if (bind(sock, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
-    printf("bind failed\n");
-        closesocket(sock);
-        return -1;
-    }
-
-    /* setup the address */
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = ipaddr;
-        
     /* connect to the server */
-    if (connect(sock, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
+    if (connect(sock, (SOCKADDR *)addr, sizeof(*addr)) != 0) {
     printf("connect failed\n");
         closesocket(sock);
         return -1;
@@ -240,6 +221,18 @@ int SendSocketData(SOCKET sock, void *buf, int len)
 int ReceiveSocketData(SOCKET sock, void *buf, int len)
 {
     return recv(sock, buf, len, 0);
+}
+
+/* ReceiveSocketDataAndAddress - receive socket data and sender's address */
+int ReceiveSocketDataAndAddress(SOCKET sock, void *buf, int len, SOCKADDR_IN *addr)
+{
+    SOCKADDR x;
+    unsigned int xlen = sizeof(x);
+    int cnt;
+    if ((cnt = recvfrom(sock, buf, len, 0, &x, &xlen)) < 0 || xlen != sizeof(SOCKADDR_IN))
+        return cnt;
+    *addr = *(SOCKADDR_IN *)&x;
+    return cnt;
 }
 
 /* ReceiveSocketDataTimeout - receive socket data */
@@ -477,19 +470,10 @@ int GetInterfaceAddresses(IFADDR *addrs, int max)
 #endif
 }
 
-const char *AddrToString(uint32_t addr)
-{
-    IN_ADDR inaddr;
-    inaddr.s_addr = addr;
-    return inet_ntoa(inaddr);
-}
+#include <arpa/inet.h>
 
-int StringToAddr(const char *addr, uint32_t *pAddr)
+const char *AddressToString(SOCKADDR_IN *addr)
 {
-    in_addr_t inaddr;
-    if ((inaddr = inet_addr(addr)) == (in_addr_t)(-1))
-        return -1;
-    *pAddr = inaddr;
-    return 0;
+    return inet_ntoa(addr->sin_addr);
 }
 

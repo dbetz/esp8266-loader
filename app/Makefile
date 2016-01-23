@@ -59,7 +59,7 @@ else
 $(error Unknown OS $(OS))
 endif
 
-BUILD=$(realpath ..)/discover-$(OS)-build
+BUILD=$(realpath ..)/espload-$(OS)-build
 
 HDRDIR=hdr
 SRCDIR=src
@@ -70,55 +70,22 @@ HDRS=\
 $(HDRDIR)/sock.h \
 
 OBJS=\
-$(OBJDIR)/discover.o \
+$(OBJDIR)/espload.o \
 $(OSINT)
 
 CFLAGS+=-I$(HDRDIR)
 CPPFLAGS=$(CFLAGS)
 
-all:	 $(BINDIR)/discover$(EXT)
+all:	 $(BINDIR)/espload$(EXT)
 
 $(OBJS):	$(OBJDIR)/created $(HDRS) Makefile
 
-$(BINDIR)/discover$(EXT):	$(BINDIR)/created $(OBJS)
+$(BINDIR)/espload$(EXT):	$(BINDIR)/created $(OBJS)
 	$(CPP) -o $@ $(OBJS) $(LIBS) -lstdc++
 
-$(BUILD)/%.elf:	%.c
-	propeller-elf-gcc -Os -mlmm -o $@ $<
-    
-$(BUILD)/%.binary:	%.spin
-	openspin -o $@ $<
+run:	$(BINDIR)/espload$(EXT)
+	$(BINDIR)/espload$(EXT)
 
-$(BUILD)/%-slow.binary:	%.spin
-	openspin -DSLOW -o $@ $<
-
-setup:	$(BUILD)/blink-slow.binary
-	propeller-load -e $(BUILD)/blink-slow.binary
-
-run:	$(BINDIR)/discover$(EXT) $(BUILD)/blink.binary
-	$(BINDIR)/discover$(EXT) $(BUILD)/blink.binary -t
-
-runbig:	$(BINDIR)/discover$(EXT) $(BUILD)/toggle.elf
-	$(BINDIR)/discover$(EXT) $(BUILD)/toggle.elf -t
-
-E:	$(BINDIR)/discover$(EXT) $(BUILD)/blink.binary
-	$(BINDIR)/discover$(EXT) $(BUILD)/blink.binary -e
-
-Ebig:	$(BINDIR)/discover$(EXT) $(BUILD)/toggle.elf
-	$(BINDIR)/discover$(EXT) $(BUILD)/toggle.elf -e
-
-P:	$(BINDIR)/discover$(EXT)
-	$(BINDIR)/discover$(EXT) -P
-	
-P0:	$(BINDIR)/discover$(EXT)
-	$(BINDIR)/discover$(EXT) -P0
-	
-X:	$(BINDIR)/discover$(EXT)
-	$(BINDIR)/discover$(EXT) -X
-	
-X0:	$(BINDIR)/discover$(EXT)
-	$(BINDIR)/discover$(EXT) -X0
-	
 $(OBJDIR)/%.o:	$(SRCDIR)/%.c $(HDRS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
