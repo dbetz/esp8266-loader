@@ -228,7 +228,11 @@ int ReceiveSocketData(SOCKET sock, void *buf, int len)
 int ReceiveSocketDataAndAddress(SOCKET sock, void *buf, int len, SOCKADDR_IN *addr)
 {
     SOCKADDR x;
+#ifdef __MINGW32__
+    int xlen = sizeof(x);
+#else
     unsigned int xlen = sizeof(x);
+#endif
     int cnt;
     if ((cnt = recvfrom(sock, buf, len, 0, &x, &xlen)) < 0 || xlen != sizeof(SOCKADDR_IN))
         return cnt;
