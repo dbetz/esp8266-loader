@@ -21,6 +21,10 @@
 //const char WiFiPSK[] = "my_password";
 #include "ap.h"
 
+/*
+/Users/dbetz/Library/Arduino15/packages/esp8266/tools/esptool/0.4.6/esptool -vv -cd ck -cb 115200 -cp /dev/cu.usbserial-A700fKXl -ca 0x00000 -cf esp8266-loader.bin
+*/
+
 WiFiServer server(80);
 WiFiServer telnetServer(23);
 WiFiClient telnetClient;

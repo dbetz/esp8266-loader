@@ -1,3 +1,5 @@
+PORT=/dev/cu.usbserial-A700fKXl
+
 all:	IP_Loader.h binaries
 
 IP_Loader.h:	IP_Loader.spin tools/split
@@ -24,6 +26,9 @@ fast:
 	curl -X POST --data-binary @blink_slow.binary thing2.local/run
 	curl -X POST --data-binary @blink_slow.binary thing2.local/run
 	curl -X POST --data-binary @blink_slow.binary thing2.local/run
+
+install:
+	esptool -vv -cd ck -cb 115200 -cp $(PORT) -ca 0x00000 -cf esp8266-loader.ino.generic.bin
 
 zip:
 	zip -r ../esp8266-loader-$(shell date "+%Y-%m-%d").zip *
