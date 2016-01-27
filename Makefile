@@ -1,10 +1,10 @@
 PORT=/dev/cu.usbserial-A700fKXl
 
-all:	IP_Loader.h binaries
+all:	esp8266-firmware/IP_Loader.h binaries
 
-IP_Loader.h:	IP_Loader.spin tools/split
-	openspin IP_Loader.spin
-	./tools/split IP_Loader.binary IP_Loader.h
+esp8266-firmware/IP_Loader.h:	esp8266-firmware/IP_Loader.spin tools/split
+	openspin esp8266-firmware/IP_Loader.spin
+	./tools/split esp8266-firmware/IP_Loader.binary esp8266-firmware/IP_Loader.h
 
 tools/split:
 	$(MAKE) -C tools
