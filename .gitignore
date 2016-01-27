@@ -3,6 +3,5 @@ espload-*-build
 *.bin
 *.elf
 ap.h
-IP_Loader.h
 tools/split
 tools/bin2c
