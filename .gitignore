@@ -2,6 +2,6 @@ espload-*-build
 *.binary
 *.bin
 *.elf
-ap.h
+esp8266-firmware/ap.h
 tools/split
 tools/bin2c
