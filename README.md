@@ -1,7 +1,7 @@
 # esp8266-loader
 Propeller loader using the ESP8266 WiFi module
 
-Build the firmware by opening the esp8266-firmware.ino file in the Arduino IDE.
+Build the firmware by opening the esp8266-firmware/esp8266-firmware.ino file in the Arduino IDE.
 
 To build this, create a file called ap.h containing the following lines:
 
