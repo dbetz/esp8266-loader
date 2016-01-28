@@ -63,15 +63,35 @@ void setupMDNS();
 void setup() 
 {
   Serial.begin(PROGRAM_BAUD_RATE);
+  
+  uint8_t macAddr[WL_MAC_ADDR_LENGTH];
+  WiFi.softAPmacAddress(macAddr);
+
+  char macString[3 * WL_MAC_ADDR_LENGTH];
+  char *p = macString;
+  char *end = &macString[sizeof(macString)];
+  for (int i = 0; i < WL_MAC_ADDR_LENGTH; ++i) {
+    int remaining = end - p;
+    snprintf(p, remaining, "%02x:", macAddr[i]);
+    p += 3;
+  }
+  p[-1] = '\0';
+
+  Serial.println();
+  Serial.println("MAC address: " + String(macString));
+
   //setupSoftAP();
   setupSTA();
   setupMDNS();
+  
+  Serial.flush();
   Serial.end();
 
   ffsMounted = SPIFFS.begin();
   server.begin();
   telnetServer.begin();
   discoverServer.begin(2000);
+
 }
 
 void loop() 
@@ -387,7 +407,6 @@ void setupSTA()
 {
 //  byte ledStatus = LOW;
   
-  Serial.println();
   Serial.println("Connecting to: " + String(WiFiSSID));
   
   // Set WiFi mode to station (as opposed to AP or AP_STA)
@@ -417,7 +436,7 @@ void setupSTA()
   }
   
   Serial.println("WiFi connected");  
-  Serial.println("IP address: ");
+  Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 }
 
