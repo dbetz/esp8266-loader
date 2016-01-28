@@ -5,8 +5,8 @@
 #include <errno.h>
 #include "sock.h"
 
-#define DEF_DISCOVER_PORT	2000
-#define DEF_RESET_PIN       2
+#define DEF_DISCOVER_PORT   2000
+#define DEF_RESET_PIN       12
 #define DEF_CHUNK_SIZE      8192
 #define MAX_CHUNK_SIZE      8192
 
