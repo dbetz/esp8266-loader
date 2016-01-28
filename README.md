@@ -14,7 +14,9 @@ const char WiFiPSK[] = "my_password";
 Of course, replace the above strings with your SSID and password.
 
 You'll need to use the Arduino IDE to build the firmware. Install the IDE using the
-instructions here: https://www.arduino.cc/en/Main/Software
+instructions here:
+
+https://www.arduino.cc/en/Main/Software
 
 Then install the ESP8266 plug-in by adding this line to the "Additional Board Manager URLs"
 list in Preferences:
